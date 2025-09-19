@@ -1,0 +1,21 @@
+{
+    "short_name": "GERÄT",
+    "name": "Kinder Musik Gerät",
+    "icons": [
+      {
+        "src": "/public/playericon-192.png",
+        "type": "image/png",
+        "sizes": "192x192"
+      },
+      {
+        "src": "/public/playericon-512.png",
+        "type": "image/png",
+        "sizes": "512x512"
+      }
+    ],
+    "start_url": "https://kinder-music.ey.r.appspot.com",
+    "background_color": "#808080",
+    "display": "fullscreen",
+    "scope": "/maps/",
+    "theme_color": "#808080"
+  }
