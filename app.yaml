@@ -11,19 +11,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# [START gae_flex_quickstart_yaml]
-runtime: nodejs10
-#env: flex
+runtime: nodejs18
+env: flex
 
 env_variables:
   BUCKET_NAME: "kinder-musik.appspot.com"
 
 handlers:
+  - url: /.*
+    secure: always
+    redirect_http_response_code: 301
+    script: auto
 
-- url: /.*
-  secure: always
-  redirect_http_response_code: 301
-  script: auto
+resources:
+  cpu: 1
+  memory_gb: 0.5
+  disk_size_gb: 10
 
 # This sample incurs costs to run on the App Engine flexible environment.
 # The settings below are to reduce costs during testing and are not appropriate
