@@ -12,13 +12,12 @@
 # limitations under the License.
 
 runtime: nodejs20
-env: flex
+env: standard
+instance_class: F1
+
 env_variables:
   BUCKET_NAME: "kinder-musik.appspot.com"
-resources:
-  cpu: 1
-  memory_gb: 0.5
-  disk_size_gb: 10
+
 
 # This sample incurs costs to run on the App Engine flexible environment.
 # The settings below are to reduce costs during testing and are not appropriate
