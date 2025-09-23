@@ -40,7 +40,8 @@
         background-color: rgb(228, 204, 208);
         position: absolute;
         top: 30%;
-        left: 37%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         border-radius: 40px;   
       }
       .mycol {
@@ -192,9 +193,22 @@ body {
 .slider {
   -webkit-appearance: none;  /* Override default CSS styles */
   appearance: none;
-  width: 90%; /* Full-width */
+  /*width: 90%; /* Full-width */
   height: 10px; /* Specified height */
   border-radius: 5px;
+  background: rgb(255, 255, 255); 
+  outline: none; /* Remove outline */
+  opacity: 1; /* Set transparency (for mouse-over effects on hover) */
+  -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+  transition: opacity .2s;
+}
+
+.slider-small {
+  -webkit-appearance: none;  /* Override default CSS styles */
+  appearance: none;
+  /*width: 90%; /* Full-width */
+  height: 10px; /* Specified height */
+  border-radius: 0px;
   background: rgb(255, 255, 255); 
   outline: none; /* Remove outline */
   opacity: 1; /* Set transparency (for mouse-over effects on hover) */
@@ -237,6 +251,16 @@ body {
     top: 35px;
     /*margin: auto;*/
 }
+
+.slider-layer4 {
+    /*width: 60%;*/
+    position: absolute;
+    z-index: 3;
+    left: 0px;
+    top: 360px;
+    /*margin: auto;*/
+}
+
 
 .btn-layer4 {
     position: absolute;
@@ -298,6 +322,23 @@ body {
 .slider::-moz-range-thumb {
   width: 25px; /* Set a specific slider handle width */
   height: 25px; /* Slider handle height */
+  background: rgb(255, 150, 255); /* Green background */
+  cursor: pointer; /* Cursor on hover */
+}
+
+.slider-small::-webkit-slider-thumb {
+  -webkit-appearance: none; /* Override default look */
+  appearance: none;
+  width: 10px; /* Set a specific slider handle width */
+  height: 10px; /* Slider handle height */
+  border-radius: 50%; 
+  background: rgb(255, 150, 255); /* pink background */
+  cursor: pointer; /* Cursor on hover */
+}
+
+.slider-small::-moz-range-thumb {
+  width: 10px; /* Set a specific slider handle width */
+  height: 10px; /* Slider handle height */
   background: rgb(255, 150, 255); /* Green background */
   cursor: pointer; /* Cursor on hover */
 }
@@ -372,10 +413,11 @@ div.marquee > div.marquee-text {
 Player Heading Line with Menu Icons
 -->
       <div id="Player Header" class="row">
-        <div class="col-sm-2"><i  id="tableIcon" class="fas fa-th fa-3x" style="padding-top:5px; padding-left:15px" onclick="showPlaylisttable()"></i></div>
+        <div class="col-2"><i  id="tableIcon" class="fas fa-th fa-3x" style="padding-top:5px; padding-left:15px" onclick="showPlaylisttable()"></i></div>
         <!-- <div class="col-md-10 marquee"  id="title"><div class="marquee-text"><h2 class="display-4 myheading">Salomes Musik Player</h2></div></div> -->
-        <div class="col-sm-8"  id="title"><div style="text-align: center"><h2 class="display-4 myheading" id="header-kid"><span class="title-kid"></span></h2></div></div>
-        <div id="closeWindow" class="col-sm-2"><i class="fas fa-times fa-3x" style="padding-top:5px; padding-right:15px; float:right;"></i></button></div>
+        <!--div class="col-sm-8"  id="title"><div style="text-align: center"><h2 class="display-4 myheading" id="header-kid"><span class="title-kid"></span></h2></div></div-->
+        <div class="col-8"  id="title"></div>
+        <div id="closeWindow" class="col-2"><i class="fas fa-times fa-3x" style="padding-top:5px; padding-right:15px; float:right;"></i></button></div>
       </div> 
 <!--
 Login Screen and oauth call
@@ -418,7 +460,10 @@ Playlists and playlisttable divs
             <svg width="100%" height="10" style="left:0;top:0;">
               <rect x="5" y="5" width="100px" height="10"
             style="fill:white;opacity:0.8" id="playerprogress"/>
-            </svg>            
+            </svg>
+            <div id="progressSlider" class="slidecontainer row d-none">
+              <input type="range" min="1" max="1000" value="0" style="width: 50" class="slider-small slider-layer4" id="progressRange">
+            </div>           
           </div>
         <div></div>
       </div>
@@ -496,7 +541,7 @@ Script for moving text
           $("#buttonrow").attr('class', 'row');
           $('#artisttable').attr('class', 'd-none');
           $('#playlisttable').attr('class', 'd-none');          
-          $("#closeWindow").attr('class', 'col-sm-2');
+          $("#closeWindow").attr('class', 'col-2');
           $("#albumtable").attr('class', 'd-none');
           $("#tableIcon").attr('class', 'fas fa-th fa-3x');
           $("#tableIcon").attr('onclick', 'showPlaylisttable()');        
@@ -582,13 +627,15 @@ Script for moving text
               skipLocalTrack("forward");
             };
             localPlayer.volume = 0.5;
+            countUpdates = 0;
 
         function startTimer() {
           timer = setInterval(updateStatus, 1000, "timer");
           console.log("timer started");
         }
 
-        function updateStatus(caller) {          
+        function updateStatus(caller) {     
+          
           if (caller == "localPlayback"){
             //if (playerState.is_playing){
             //  pausePlayback();
@@ -623,7 +670,10 @@ Script for moving text
             }   
           }
           if (!(activeObject.name == displayObject.name)){
+            console.log("different object");
+            $(progressSlider).addClass("d-none");
             $('#playbackBtn').attr('class', 'far fa-play-circle fa-5x layer3');
+            countUpdates = 0;
           }
 
           if (localPlayer.ended){
@@ -631,24 +681,28 @@ Script for moving text
           }
 
           if (localPlayer.is_playing && displayObject.name == activeObject.name) {
+            $(progressSlider).removeClass("d-none");
             $('#playbackBtn').attr('class', 'far fa-pause-circle fa-5x layer3');
             //$('#playingRow').attr('class', 'row');
             if (localPlayer.is_playing){
-              //let currentTrackName = localPlayer.album.tracks[localPlayer.currentTrack-1].split(".mp3"); // on local machine
               let currentTrackName = localPlayer.album.tracks.names[localPlayer.currentTrack-1].split(".mp3"); // on google
-              //$('#currentlyPlaying').html(currentTrackName[0]);
-              updateProgress(localPlayer.currentTime);
-            }                   
+            }
+            if (countUpdates++ > 25){
+              countUpdates = 0;
+              scrollToTrack(localPlayer.currentTrack);
+            }
 
           } else {
             $('#playbackBtn').attr('class', 'far fa-play-circle fa-5x layer3');
             //$('#playingRow').attr('class', 'row d-none');
           }
-
+          updateSlider();
+          updateProgress();
         }
 
         function scrollToTrack (number){
-          if (activeObject.name = displayObject.name){
+          //console.log("scroll to track", number);
+          if (activeObject.name == displayObject.name){
             let trackDisplay = document.querySelector("#track" + (number-1));
             trackDisplay.scrollIntoView({ left: 0, block: 'start', behavior: 'smooth' });
           }
@@ -657,34 +711,16 @@ Script for moving text
         function updateProgress(time){
           if (activeObject.name == displayObject.name){
             let duration;
-            let progress;
-            if (activeObject.local){
-              duration = localPlayer.duration*1000;            
-            } else {
-              //duration = playerState.track_duration
-            }
-            if(time>-1){
-              if (activeObject.local){
-                progress = time*1000/duration*($("#playerimg").width()) + "px";
-              } else {              
-                progress = time/duration*($("#playerimg").width()) + "px";
-              }
-              $("#playerprogress").width(progress);
-            } else {
-              let old = parseFloat($("#playerprogress").width(), 10);
-              let step = 200/duration*parseInt(($("#playerimg").width()), 10);
-              progress = (old+step).toString() + "px";
-              //console.log(progress);
-              if (parseInt(progress) <= parseInt($("#playerimg").width(), 10)){
-                $("#playerprogress").width(progress);
-              }
-            }
+            let progress = localPlayer.currentTime;
+            duration = localPlayer.duration; 
+            $("#progressRange").val(progress/duration*1000);
+            //console.log("progress", progress);
           }
         }
 
         function progressState (){
           console.log("started progressbar")
-            progressTimer = setInterval(function() {updateProgress(-1);}, 200);
+            progressTimer = setInterval(function() {updateProgress();}, 200);
         }
 
         function createPlaylisttable () {
@@ -748,21 +784,6 @@ Script for moving text
           updateHandlers();
         }
 */
-        function setRemoteTrackList(tracks, context){          
-          $("#trackdiv").html("");
-          if (context == "episodes"){
-            $("#trackdiv").append("<p id=\"track0\">" + tracks.name + "</p>")
-          } else {
-            for(i=0; i<tracks.length; i++){
-              if (context == "playlists"){
-                $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i].track.name + "</p>");
-              } else {
-                $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i].name + "</p>");
-              }
-            }
-          }
-          updateHandlers();
-        }
 
         function setLocalTracklist(index){
           //let tracks = salomesLists.items[index].tracks; // on local machine
@@ -777,19 +798,11 @@ Script for moving text
         function colorTrack(){
           //console.log("coloring");
           $("#trackdiv p").removeClass("pressed-btn thick");
-          if (activeObject.local){
-            $("#trackdiv p").each(function( index ) {
-              if($(this).index() == localPlayer.currentTrack-1){
-                $(this).addClass("pressed-btn thick");
-              }              
-            });
-          } else {}
-            $("#trackdiv p").each(function( index ) {
-              //if($(this).text() == playerState.track){
-              //  $(this).addClass("pressed-btn thick");
-              //}              
-            });
-            //activeObject.track = playerState.track;
+          $("#trackdiv p").each(function( index ) {
+            if($(this).index() == localPlayer.currentTrack-1){
+              $(this).addClass("pressed-btn thick");
+            }              
+          });
         }
 
         function gotoStart() {
@@ -848,12 +861,18 @@ Script for moving text
           }
             
           var slider = document.getElementById("volumeRange");
-          var output = document.getElementById("demo");
-          var currentVolume = slider.value; // Display the default slider value
 
           $('#volumeRange').on("input", function(){
             var volume = updateSlider('#volumeRange').toString();
             setVolume(volume)
+          });
+
+          $('#progressRange').on("input", function(){
+            console.log("progress changed");
+            //clearInterval(progressTimer);
+            //progressChange = true;
+            let progress = $('#progressRange').val().toString();
+            localPlayer.currentTime = progress/1000*localPlayer.duration;
           });
 
         var salomesLists = {
@@ -1102,15 +1121,15 @@ Script for moving text
       
       function initProgress(){
         clearInterval(progressTimer);
-        let playerImagex = "left:" + (($("#player-image-container").innerWidth() - $("#playerimg").width())/2-5) + "px;";
-        let playerImagey = "top:" + ($("#playerimg").height()-15) + "px;";
-        //let playerImagex = $("#player-image-container").innerWidth() - $("#playerimg").width();
-        //let playerImagey = $("#playerimg").height()-15;
+        let playerImagex = "left:" + (($("#player-image-container").innerWidth() - $("#playerimg").width())/2) + "px;";
+        let playerImagey = "top:" + ($("#playerimg").height() - 10) + "px;";
+        let playerImageWidth = "width:" + ($("#playerimg").width()) + "px;";
         $("#player-image-container svg").attr("style", playerImagex+playerImagey);
         $("#playerprogress").width(0);
+        $("#progressRange").attr("style", playerImagex+playerImagey+playerImageWidth);
         //if(playerState.is_playing || localPlayer.is_playing){
         if(localPlayer.is_playing){
-          progressState ("start");
+          progressState ();
         }
       }
 
