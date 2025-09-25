@@ -113,7 +113,7 @@ app.get('/fetch_local_playlists', async function(req,res){
     localLists.items.push(playlist);
   }
 
-  /*for (const playlist of localLists.items) { //production: all playlists
+  for (const playlist of localLists.items) { //production: all playlists
  // for (const playlist of localLists.items.filter(p => p.name === "Das Auto Blubberbum")) { //debugging: only one playlist
 
     let tracks = playlist.tracks;
@@ -182,7 +182,7 @@ app.get('/fetch_local_playlists', async function(req,res){
       });
       console.log(`Updated description.json for ${playlist.name}`);
     }
-  }*/
+  }
 
   if (localLists.items.length==albums.length){
       res.send(localLists);
@@ -191,5 +191,6 @@ app.get('/fetch_local_playlists', async function(req,res){
 
 console.log('Listening on 8080');
 app.listen(8080);
+
 
 
