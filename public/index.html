@@ -641,13 +641,16 @@ Script for moving text
             //  pausePlayback();
             //}
             if (!(activeObject.name == displayObject.name)){
-              console.log(localPlayer.album);            
+              //console.log(localPlayer.album);            
               localPlayer.pause();
               localPlayer.currentTime = 0;
               localPlayer.album = salomesLists.items[displayObject.index];                          
               //localPlayer.src = localPlayer.album.tracksPath + localPlayer.album.tracks[0]; // on local machine
               localPlayer.src = localPlayer.album.tracks.url[0]; // on google
               localPlayer.currentTrack = 1;
+              if (localPlayer.album.tracks.duration && localPlayer.album.tracks.duration.length > 0){
+                localPlayer.duration = localPlayer.album.tracks.duration[0];
+              }
               console.log("playing " + localPlayer.src);
               localPlayer.currentTime = 0;
               Object.assign(activeObject, displayObject);
@@ -660,8 +663,7 @@ Script for moving text
               localPlayer.is_playing = true;
               colorTrack();
               initProgress();
-            }
-            else {
+            } else {
               $('#playbackBtn').attr('class', 'far fa-play-circle fa-5x layer3');
               localPlayer.pause();
               clearInterval(progressTimer);
@@ -712,7 +714,7 @@ Script for moving text
           if (activeObject.name == displayObject.name){
             let duration;
             let progress = localPlayer.currentTime;
-            duration = localPlayer.duration; 
+            duration = localPlayer.duration;
             $("#progressRange").val(progress/duration*1000);
             //console.log("progress", progress);
           }
@@ -847,7 +849,11 @@ Script for moving text
                 localPlayer.pause();
                 localPlayer.currentTime = 0;
                 //localPlayer.src = localPlayer.album.tracksPath + localPlayer.album.tracks[localPlayer.currentTrack-1]; //on local machine
-                localPlayer.src = localPlayer.album.tracks.url[localPlayer.currentTrack-1]; // on google
+                localPlayer.src = localPlayer.album.tracks.url[localPlayer.currentTrack-1];// on google
+                if (localPlayer.album.tracks.duration && localPlayer.album.tracks.duration.length > 0){
+                  localPlayer.duration = localPlayer.album.tracks.duration[localPlayer.currentTrack-1];
+                  console.log("set duration", localPlayer.duration[localPlayer.currentTrack-1]);
+                }
                 localPlayer.currentTime = 0;
                 localPlayer.play();
               }
@@ -1011,25 +1017,15 @@ Script for moving text
           console.log("clicked track")
           if(!$(this).hasClass("pressed-btn")){
             let newNumber = $(this).index();
-            if(!(displayObject.local)){
-              //if(activeObject.local){
-                localPlayer.pause();
-                clearInterval(progressTimer);
-              //}              
-              displayObject.track_number = newNumber;
-              console.log(displayObject.track_number);
-              startPlayback();
+            if (displayObject.name == activeObject.name){
+              console.log("local jump");
+              let oldNumber = localPlayer.currentTrack;
+              let jump = newNumber - oldNumber +1;
+              localJump(jump);
             } else {
-              if (displayObject.name == activeObject.name){
-                console.log("local jump");
-                let oldNumber = localPlayer.currentTrack;
-                let jump = newNumber - oldNumber +1;
-                localJump(jump);
-              } else {
-                console.log(activeObject.name, displayObject.name);
-                updateStatus("localPlayback");
-                localJump(newNumber);
-              }
+              console.log(activeObject.name, displayObject.name);
+              updateStatus("localPlayback");
+              localJump(newNumber);
             }
           }
         });
