@@ -13,24 +13,7 @@ var https = require('https');
 var redirect_uri = 'http://localhost:8080/callback'; // Your redirect uri: mainly used localhost
 var app = express();
 
-/*
-app.use((req, res, next) => {
-  const oldWriteHead = res.writeHead;
-  res.writeHead = function (statusCode, reasonPhrase, headers) {
-    console.log("Response headers:", res.getHeaders());
-    return oldWriteHead.apply(res, arguments);
-  };
-  next();
-});
 
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; connect-src 'self' https://storage.googleapis.com; img-src 'self' data:; script-src 'self'; style-src 'self';"
-  );
-  next();
-});
-*/
 
 app.use(express.static(__dirname + '/public'))
    .use(cors())
@@ -41,28 +24,29 @@ app.use(express.static(__dirname + '/public'))
 */
 
 const {Storage} = require('@google-cloud/storage');
+const mm = require('music-metadata');
 
 // Creates a client
 const storage = new Storage();
- const bucketName = 'kinder-musik.appspot.com'
+const bucketName = 'kinder-musik.appspot.com'
 
-  async function listFiles() {
-    // Lists files in the bucket
-    const [files] = await storage.bucket(bucketName).getFiles();
-    return files;
-  }
+async function listFiles() {
+  // Lists files in the bucket
+  const [files] = await storage.bucket(bucketName).getFiles();
+  return files;
+}
 
-  function fetchJSON(url) {
-    return new Promise((resolve, reject) => {
-        request(url, (error, response, body) => {
-            if (error) reject(error);
-            if (response.statusCode != 200) {
-                reject('Invalid status code <' + response.statusCode + '>');
-            }
-            resolve(body);
-        });
-    });
-  }  
+function fetchJSON(url) {
+  return new Promise((resolve, reject) => {
+      request(url, (error, response, body) => {
+          if (error) reject(error);
+          if (response.statusCode != 200) {
+              reject('Invalid status code <' + response.statusCode + '>');
+          }
+          resolve(body);
+      });
+  });
+}  
 
 app.get('/fetch_local_playlists', async function(req,res){
   var localLists = {
@@ -77,63 +61,132 @@ app.get('/fetch_local_playlists', async function(req,res){
       if (!(albums.includes(album))){
         albums.push(album)
       }
-    }
-    console.log("albums found: ", albums);
+  }
+  console.log("albums found: ", albums);
 
-    for (const album of albums){
-        console.log("browsing album ", album);
-        let dscrComplete = false,
-            trckComplete = false,
-            imgComplete = false;
-        let tracksPath = "";
-        let tracks = {
-            names: [],
-            url: []
-        }
-        let image = "/playericon-512.png", // default image
-            description = {
-              artist: '',
-              genre: ''
-            }; // default description
-        for (const file of files) {           
-            if (file.name.search(album) > -1){
-              console.log("checking file ", file.name); 
-                if(tracksPath==""){
-                    tracksPath = file.publicUrl().split(encodeURI(album +"/"));
-                }
-                if (file.name.search(".mp3") > -1){
-                    tracks.names.push(file.name.split(album  + "/")[1]);
-                    //tracks.url.push(encodeURI(file.publicUrl()));
-                    tracks.url.push(file.publicUrl());
-                    console.log("found track ", file.name);
-                } else if (file.name.search(".jpg") > -1 || file.name.search(".png") > -1){
-                    //image = encodeURI(file.publicUrl());
-                    image = file.publicUrl();
-                    imgComplete = true
-                    console.log("found image file");
-                } else if (file.name.search(".json") > -1){
-                    console.log("found json file");
-                    console.log(file.id);
-                    console.log(file.publicUrl());
-                    let descriptionRaw = await fetchJSON(file.publicUrl());
-                    description = JSON.parse(descriptionRaw);
-                }                
+  for (const album of albums){
+    console.log("browsing album ", album);
+    let tracksPath = "";
+    let tracks = {
+        names: [],
+        url: [],
+        duration: []
+    }
+    let image = "/playericon-512.png", // default image
+        description = {
+          artist: '',
+          genre: ''
+        }; // default description
+    for (const file of files) {           
+        if (file.name.search(album) > -1){
+          //console.log("checking file ", file.name); 
+            if(tracksPath==""){
+                tracksPath = file.publicUrl().split(encodeURI(album +"/"));
             }
+            if (file.name.search(".mp3") > -1){
+                tracks.names.push(file.name.split(album  + "/")[1]);
+                //tracks.url.push(encodeURI(file.publicUrl()));
+                tracks.url.push(file.publicUrl());
+                //console.log("found track ", file.name);
+            } else if (file.name.search(".jpg") > -1 || file.name.search(".png") > -1){
+                //image = encodeURI(file.publicUrl());
+                image = file.publicUrl();
+                //console.log("found image file");
+            } else if (file.name.search(".json") > -1){
+                //console.log("found json file");
+                //console.log(file.id);
+                //console.log(file.publicUrl());
+                let descriptionRaw = await fetchJSON(file.publicUrl());
+                description = JSON.parse(descriptionRaw);
+                //console.log("description: ", description);
+            }                
         }
+    }
 
-        playlist = {
-            name: album,
-            tracks: tracks,
-            imageUri: image,
-            local: true,
-            description: description
+    playlist = {
+        name: album,
+        tracks: tracks,
+        imageUri: image,
+        local: true,
+        description: description
+    }
+    localLists.items.push(playlist);
+  }
+
+  //for (const playlist of localLists.items) { //production: all playlists
+  for (const playlist of localLists.items.filter(p => p.name === "Das Auto Blubberbum")) { //debugging: only one playlist
+
+    let tracks = playlist.tracks;
+    if ( playlist.description.artist == "") {
+      console.log("no valid description.json found");
+      continue; // no description.json found
+    } else {
+      console.log("description.json found");
+      var description = playlist.description;
+    }
+
+    let updated = false;
+    let durationAvailable = false;
+
+    for (let i = 0; i < tracks.names.length; i++) {
+      const trackName = playlist.tracks.names[i];
+      console.log(description);
+      if ( description.tracks !== undefined) {
+        if (description.tracks.duration[i]){
+          durationAvailable = true;
+          console.log("duration available in description.json");
+        }else{
+          durationAvailable = false;
         }
-        localLists.items.push(playlist);
+      } else {
+        playlist.description.tracks = { duration: [] };
+      }      
+
+      // Make sure playlist.tracks has a duration array
+      if (!playlist.tracks.duration) {
+        playlist.tracks.duration = [];
+      }
+
+      // Skip if duration already present
+      if (durationAvailable) {
+        playlist.tracks.duration[i] = playlist.description.tracks.duration[i];
+        continue;
+      }
+
+      try {
+        // Load file from GCS
+        const file = storage.bucket(bucketName).file(`${playlist.name}/${trackName}`);
+        const stream = file.createReadStream();
+
+        const metadata = await mm.parseStream(stream, { mimeType: 'audio/mpeg' });
+        stream.destroy();
+
+        const durationSec = Math.round(metadata.format.duration);
+
+        // Update both description.json and in-memory playlist
+        playlist.description.tracks.duration.push(durationSec || 0);
+        playlist.tracks.duration.push(durationSec || 0);
+
+        updated = true;
+        console.log(`Added duration for ${playlist.name}/${trackName}: ${durationSec}s`);
+      } catch (err) {
+        console.error(`Could not read duration for ${playlist.name}/${trackName}:`, err.message);
+      }
     }
-    
-    if (localLists.items.length==albums.length){
-        res.send(localLists);
+
+    // Save updated description.json back to GCS if anything changed
+    if (updated) {
+      const descFile = storage.bucket(bucketName).file(`${playlist.name}/description.json`);
+      await descFile.save(JSON.stringify(playlist.description, null, 2), {
+        contentType: 'application/json'
+      });
+      console.log(`Updated description.json for ${playlist.name}`);
     }
+  }
+
+  if (localLists.items.length==albums.length){
+      res.send(localLists);
+  }
 });
 
 console.log('Listening on 8080');
