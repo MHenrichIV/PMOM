@@ -796,9 +796,9 @@ Script for moving text
           let tracks = salomesLists.items[index].tracks.names; // on google
           $("#trackdiv").html("");
           for(i=0; i<tracks.length; i++){
-            if (tracks[ii].search(".mp3") > -1){
+            if (tracks[i].search(".mp3") > -1){
               $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i].split(".mp3")[0] + "</p>");
-            } else if (file.name.search(".m4u") > -1){
+            } else if (tracks[i].search(".m4u") > -1){
               $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i].split(".m4u")[0] + "</p>");
             }
           }
@@ -1219,4 +1219,5 @@ Script for moving text
     </script>
   </body>
 </html>
+
 
