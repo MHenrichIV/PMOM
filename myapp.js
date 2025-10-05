@@ -83,7 +83,7 @@ app.get('/fetch_local_playlists', async function(req,res){
             if(tracksPath==""){
                 tracksPath = file.publicUrl().split(encodeURI(album +"/"));
             }
-            if (file.name.search(".mp3") > -1 || file.name.search(".m4u") > -1){
+            if (file.name.search(".mp3") > -1 || file.name.search(".m4a") > -1){
                 tracks.names.push(file.name.split(album  + "/")[1]);
                 //tracks.url.push(encodeURI(file.publicUrl()));
                 tracks.url.push(file.publicUrl());
@@ -112,9 +112,9 @@ app.get('/fetch_local_playlists', async function(req,res){
     }
     localLists.items.push(playlist);
   }
-
- /* for (const playlist of localLists.items) { //production: all playlists
- // for (const playlist of localLists.items.filter(p => p.name === "Das Auto Blubberbum")) { //debugging: only one playlist
+/*
+  //for (const playlist of localLists.items) { //production: all playlists
+  for (const playlist of localLists.items.filter(p => p.name === "Das Auto Blubberbum")) { //debugging: only one playlist
 
     let tracks = playlist.tracks;
     if ( playlist.description.artist == "") {
@@ -191,8 +191,3 @@ app.get('/fetch_local_playlists', async function(req,res){
 
 console.log('Listening on 8080');
 app.listen(8080);
-
-
-
-
-
