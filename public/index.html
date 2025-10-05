@@ -533,6 +533,10 @@ Script for moving text
       </div>
     </div>
 
+<!--
+    Scripts chamging views and player functions
+  -->
+
     <script>
         function goToPlaylist(){
           //console.log("showing Playlist");
@@ -570,18 +574,18 @@ Script for moving text
         }
     </script>
 
+<!-- 
+    Main Script
+-->
+
     <script>
       (function() {
         
-        var activityCounter=0,
-            currentTrack,
+        var currentTrack,
             timer,
             progressTimer,
-            localTimer,
-            wait = 0,
             lastActivity = 0,
             tokenTime =0;
-        var playerState;
         var activeObject = {},
             displayObject = {
               track_number: 1
@@ -594,9 +598,6 @@ Script for moving text
         if (navigator.platform.indexOf("X11") != -1) os = "UNIX";
         if (navigator.platform.indexOf("Linux") != -1) os = "Linux";
         // console.log("Your OS is", os);
-        
-        // onlyLocal playback possible
-        var onlyLocal = true;
 
         function crazyFy(string){
           let colors = [
@@ -621,7 +622,10 @@ Script for moving text
           return stringOut
         }
         
-        // Local Player Setup
+//////////////////////////////////
+// Local Player Setup
+//////////////////////////////////
+
         var localPlayer = document.createElement("AUDIO");
             localPlayer.onended = function(){
               skipLocalTrack("forward");
@@ -634,12 +638,14 @@ Script for moving text
           console.log("timer started");
         }
 
+/////////////////////////////////
+// Update Status
+/////////////////////////////////
+
         function updateStatus(caller) {     
           
           if (caller == "localPlayback"){
-            //if (playerState.is_playing){
-            //  pausePlayback();
-            //}
+
             if (!(activeObject.name == displayObject.name)){
               //console.log(localPlayer.album);            
               localPlayer.pause();
@@ -648,8 +654,12 @@ Script for moving text
               //localPlayer.src = localPlayer.album.tracksPath + localPlayer.album.tracks[0]; // on local machine
               localPlayer.src = localPlayer.album.tracks.url[0]; // on google
               localPlayer.currentTrack = 1;
-              if (localPlayer.album.tracks.duration && localPlayer.album.tracks.duration.length > 0){
-                localPlayer.duration = localPlayer.album.tracks.duration[0];
+              console.log(localPlayer);
+              if (localPlayer.album.description.duration && localPlayer.album.description.duration.length > 0){
+                localPlayer.customDuration = localPlayer.album.tracks.duration[0];
+                cosnol.log("set custom duration ", localPlayer.customDuration);
+              } else {
+                localPlayer.customDuration = 0;
               }
               console.log("playing " + localPlayer.src);
               localPlayer.currentTime = 0;
@@ -685,14 +695,6 @@ Script for moving text
           if (localPlayer.is_playing && displayObject.name == activeObject.name) {
             $(progressSlider).removeClass("d-none");
             $('#playbackBtn').attr('class', 'far fa-pause-circle fa-5x layer3');
-            //$('#playingRow').attr('class', 'row');
-            if (localPlayer.is_playing){
-              if (file.name.search(".mp3") > -1){
-                let currentTrackName = localPlayer.album.tracks.names[localPlayer.currentTrack-1].split(".mp3"); // on google
-              } else if (file.name.search(".m4u") > -1 ){
-                let currentTrackName = localPlayer.album.tracks.names[localPlayer.currentTrack-1].split(".m4u"); // on google
-              }
-            }
             if (countUpdates++ > 25){
               countUpdates = 0;
               scrollToTrack(localPlayer.currentTrack);
@@ -702,15 +704,23 @@ Script for moving text
             $('#playbackBtn').attr('class', 'far fa-play-circle fa-5x layer3');
             //$('#playingRow').attr('class', 'row d-none');
           }
-          updateSlider();
-          updateProgress();
         }
 
-        function scrollToTrack (number){
-          //console.log("scroll to track", number);
-          if (activeObject.name == displayObject.name){
-            let trackDisplay = document.querySelector("#track" + (number-1));
-            trackDisplay.scrollIntoView({ left: 0, block: 'start', behavior: 'smooth' });
+/////////////////////////////////
+// Player functions functionality
+/////////////////////////////////        
+
+        function initProgress(){
+          clearInterval(progressTimer);
+          let playerImagex = "left:" + (($("#player-image-container").innerWidth() - $("#playerimg").width())/2) + "px;";
+          let playerImagey = "top:" + ($("#playerimg").height() - 10) + "px;";
+          let playerImageWidth = "width:" + ($("#playerimg").width()) + "px;";
+          $("#player-image-container svg").attr("style", playerImagex+playerImagey);
+          $("#playerprogress").width(0);
+          $("#progressRange").attr("style", playerImagex+playerImagey+playerImageWidth);
+
+          if(localPlayer.is_playing){
+            progressTimer = setInterval(function() {updateProgress();}, 200);
           }
         }
 
@@ -718,16 +728,173 @@ Script for moving text
           if (activeObject.name == displayObject.name){
             let duration;
             let progress = localPlayer.currentTime;
-            duration = localPlayer.duration;
+            if (localPlayer.customDuration && localPlayer.customDuration > 0){
+              duration = localPlayer.customDuration;
+            } else{
+              duration = localPlayer.duration;
+            }
             $("#progressRange").val(progress/duration*1000);
-            //console.log("progress", progress);
+            console.log("progress", progress);
           }
         }
 
-        function progressState (){
-          console.log("started progressbar")
-            progressTimer = setInterval(function() {updateProgress();}, 200);
+        function setLocalTracklist(index){
+          //let tracks = salomesLists.items[index].tracks; // on local machine
+          let tracks = salomesLists.items[index].tracks.names; // on google
+          $("#trackdiv").html("");
+          if (tracks[0].search(".mp3") > -1){
+            for(i=0; i<tracks.length; i++){
+                $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i].split(".mp3")[0] + "</p>");
+            }
+          } else if (tracks[0].search(".m4a") > -1){
+            for(i=0; i<tracks.length; i++){
+                $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i].split(".m4a")[0] + "</p>");
+            }
+          } else {
+            for(i=0; i<tracks.length; i++){
+                $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i] + "</p>");
+            }            
+          }
+          updateHandlers();          
         }
+
+        function skipLocalTrack(mode){
+            let changeTrack = false;
+            //if (mode == "forward" && localPlayer.currentTrack < localPlayer.album.tracks.length+1){ // on local machine
+              if (mode == "forward" && localPlayer.currentTrack < localPlayer.album.tracks.names.length+1){ // on google               
+              localPlayer.currentTrack ++;
+              changeTrack = true;
+            }
+            else if (mode =="backward" && localPlayer.currentTrack > 1){
+              localPlayer.currentTrack --;
+              changeTrack = true;
+            }
+            if (changeTrack){
+              localPlayer.pause();
+              localPlayer.currentTime = 0;
+              //localPlayer.src = localPlayer.album.tracksPath + localPlayer.album.tracks[localPlayer.currentTrack-1]; //on local machine
+              localPlayer.src = localPlayer.album.tracks.url[localPlayer.currentTrack-1];// on google
+              console.log(localPlayer.album);
+              if (localPlayer.album.description.tracks && localPlayer.album.description.tracks.duration && localPlayer.album.description.tracks.duration.length > 0){
+                localPlayer.customDuration = Math.round(localPlayer.album.description.tracks.duration[localPlayer.currentTrack-1]);
+                console.log("set custom duration ", localPlayer.customDuration);
+              } else {
+                localPlayer.customDuration = 0;
+              }
+              localPlayer.currentTime = 0;
+              localPlayer.play();
+            }
+            colorTrack();
+            scrollToTrack (localPlayer.currentTrack);
+            initProgress();
+          }
+
+      function setVolume(volume) {
+        localPlayer.volume = volume/100;
+      }
+      
+      function localJump (jump){
+        let mode;
+              if (Math.sign(jump) < 0){
+                mode = "backward";               
+              } else {
+                mode = "forward";
+              }
+              for (i=0; i<Math.abs(jump); i++){
+              skipLocalTrack(mode);
+              }
+      }     
+
+
+//////////////////////////////////
+// player functions display
+//////////////////////////////////
+
+      function animatePlay(){
+        // put volume to its spot
+        $("#volumeslider").addClass('d-none');
+        $('#volumeBtn').removeClass('pressed-btn');
+        let volumeOffset = ($("#playerborder").innerWidth()-75) + "px";
+        let otherOffset = "left:" + ($("#playerborder").innerWidth()-90) + "px;";
+        $("#volumeborder rect").attr("x", volumeOffset);
+        $("#volumeBtn i").attr("style", otherOffset);
+        $("#volumeborder rect").attr("width", 70);
+        // animate play border
+        let end = ($("#playerborder").innerWidth()-100);
+        let elem = $("#playerrect");
+        let id = setInterval(frame, 1);
+        let current = 70;
+        function frame(){
+          if ($("#playerrect").attr("width") >= end){
+            $("#playerrect").attr("width", end) 
+            $("#tracklist").removeClass("d-none");
+            clearInterval(id);            
+          } else { 
+            current+=5;         
+          $("#playerrect").attr("width", current)  
+          }
+        }
+        initProgress();
+        // size of track list
+        let tracksWidth = "width:" + ($("#playerborder").innerWidth()-160) + "px";
+        $("#tracklist").attr("style", tracksWidth);
+      }
+
+      function animateVolume(){
+        // put volume to its spot
+        let volumeOffset = ($("#playerborder").innerWidth()-75) + "px";
+        let otherOffset = "left:" + ($("#playerborder").innerWidth()-90) + "px;";
+        $("#volumeborder rect").attr("x", volumeOffset);
+        $("#volumeBtn i").attr("style", otherOffset);
+        // put away playerrect
+        $("#tracklist").addClass("d-none");
+        $("#playerrect").attr("width", 70);
+        // animate play border
+        let end = ($("#playerborder").innerWidth()-100);
+        let elem = $("#volumeborder");
+        let id = setInterval(frame, 1);
+        let currentWidth = 70;
+        let currentOffset = $("#playerborder").innerWidth()-75;
+        function frame(){
+          if ($("#volumeborder rect").attr("width") >= end){
+            $("#volumeborder rect").attr("width", end);
+            $("#volumeborder rect").attr("x", 95);
+            $("#volumeslider").removeClass('d-none');            
+            clearInterval(id);            
+          } else { 
+            currentWidth+=5;
+            currentOffset-=5;        
+          $("#volumeborder rect").attr("width", currentWidth);
+          $("#volumeborder rect").attr("x", currentOffset);
+          }
+        }         
+        // fit volume slider
+        let volumeWidth = "width:" + ($("#playerborder").innerWidth()-235) + "px";
+        let volumeStyle =  $("#volumeRange").attr("style").split("width:")[0];
+        $("#volumeRange").attr("style", volumeStyle+volumeWidth);
+      }
+
+      function scrollToTrack (number){
+        //console.log("scroll to track", number);
+        if (activeObject.name == displayObject.name){
+          let trackDisplay = document.querySelector("#track" + (number-1));
+          trackDisplay.scrollIntoView({ left: 0, block: 'start', behavior: 'smooth' });
+        }
+      }      
+
+      function colorTrack(){
+        //console.log("coloring");
+        $("#trackdiv p").removeClass("pressed-btn thick");
+        $("#trackdiv p").each(function( index ) {
+          if($(this).index() == localPlayer.currentTrack-1){
+            $(this).addClass("pressed-btn thick");
+          }              
+        });
+      }
+
+//////////////////////////////////
+// Create Tables 
+//////////////////////////////////
 
         function createPlaylisttable () {
           for (i=0; i<salomesLists.items.length; i++){
@@ -791,30 +958,6 @@ Script for moving text
         }
 */
 
-        function setLocalTracklist(index){
-          //let tracks = salomesLists.items[index].tracks; // on local machine
-          let tracks = salomesLists.items[index].tracks.names; // on google
-          $("#trackdiv").html("");
-          for(i=0; i<tracks.length; i++){
-            if (tracks[i].search(".mp3") > -1){
-              $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i].split(".mp3")[0] + "</p>");
-            } else if (tracks[i].search(".m4u") > -1){
-              $("#trackdiv").append("<p id=\"track" + i + "\">" + tracks[i].split(".m4u")[0] + "</p>");
-            }
-          }
-          updateHandlers();          
-        }        
-
-        function colorTrack(){
-          //console.log("coloring");
-          $("#trackdiv p").removeClass("pressed-btn thick");
-          $("#trackdiv p").each(function( index ) {
-            if($(this).index() == localPlayer.currentTrack-1){
-              $(this).addClass("pressed-btn thick");
-            }              
-          });
-        }
-
         function gotoStart() {
           $('#playlisttable').attr('class', 'd-none');
           $('#artisttable').attr('class', 'd-none');
@@ -841,75 +984,25 @@ Script for moving text
                 );
             return $(element).val();
           }
-
-          function skipLocalTrack(mode){
-              let changeTrack = false;
-              //if (mode == "forward" && localPlayer.currentTrack < localPlayer.album.tracks.length+1){ // on local machine
-                if (mode == "forward" && localPlayer.currentTrack < localPlayer.album.tracks.names.length+1){ // on google               
-                localPlayer.currentTrack ++;
-                changeTrack = true;
-              }
-              else if (mode =="backward" && localPlayer.currentTrack > 1){
-                localPlayer.currentTrack --;
-                changeTrack = true;
-              }
-              if (changeTrack){
-                localPlayer.pause();
-                localPlayer.currentTime = 0;
-                //localPlayer.src = localPlayer.album.tracksPath + localPlayer.album.tracks[localPlayer.currentTrack-1]; //on local machine
-                localPlayer.src = localPlayer.album.tracks.url[localPlayer.currentTrack-1];// on google
-                if (localPlayer.album.tracks.duration && localPlayer.album.tracks.duration.length > 0){
-                  localPlayer.duration = localPlayer.album.tracks.duration[localPlayer.currentTrack-1];
-                  console.log("set duration", localPlayer.duration[localPlayer.currentTrack-1]);
-                }
-                localPlayer.currentTime = 0;
-                localPlayer.play();
-              }
-              colorTrack();
-              scrollToTrack (localPlayer.currentTrack);
-              initProgress();
-            }
-
-          function setVolume(volume) {
-            localPlayer.volume = volume/100;
-          }
             
-          var slider = document.getElementById("volumeRange");
+        var slider = document.getElementById("volumeRange");
 
-          $('#volumeRange').on("input", function(){
-            var volume = updateSlider('#volumeRange').toString();
-            setVolume(volume)
-          });
-
-          $('#progressRange').on("input", function(){
-            console.log("progress changed");
-            //clearInterval(progressTimer);
-            //progressChange = true;
-            let progress = $('#progressRange').val().toString();
-            localPlayer.currentTime = progress/1000*localPlayer.duration;
-          });
+////////////////////////////////
+// Fetch Local Playlists and related functions
+////////////////////////////////
 
         var salomesLists = {
           items:[]
-        };        
+          };        
         var bookLists = {
           items:[]
-        };
+          };
         var personalArtists = {
           artists:[]
-        };
-        var myDevice,
-            totalPlaylists = 1;
-        
-        var keyword = "";
-
- 
-        var remotePlaylistsReady = false,
-            localPlaylistsReady = false,
+          }; 
+        var localPlaylistsReady = false,
             localLists,
-            artistWhitelist = 0,
-            appSettings,
-            user;
+            artistWhitelist = 0;
 
         function getLocalPlaylists(){
           console.log("waiting for local Playlists");
@@ -923,8 +1016,6 @@ Script for moving text
                     combinePlaylists();                                      
                   });
         }
-
-        var localLists = getLocalPlaylists();
             
         function compare(a, b) {
           // Use toUpperCase() to ignore character casing
@@ -940,19 +1031,14 @@ Script for moving text
         }
 
         function combinePlaylists(){
-          if (onlyLocal){
-            salomesLists = localLists;
-          }
-          else {
-            //salomesLists.items = salomesLists.items.concat(localLists.items);
-          }
-              for (var k= 0; k<salomesLists.items.length; k++){ 
-                  if(salomesLists.items[k].description.genre == "book"){
-                        let temp = salomesLists.items.splice(k,1)[0];
-                        k--;                         
-                        bookLists.items.push(temp);
-                      }
-                  }
+          salomesLists = localLists;
+            for (var k= 0; k<salomesLists.items.length; k++){ 
+                if(salomesLists.items[k].description.genre == "book"){
+                      let temp = salomesLists.items.splice(k,1)[0];
+                      k--;                         
+                      bookLists.items.push(temp);
+                    }
+                }
           salomesLists.items = salomesLists.items.sort(compare);
           bookLists.items = bookLists.items.sort(compare);   
           salomesLists.items = salomesLists.items.concat(bookLists.items);           
@@ -960,22 +1046,24 @@ Script for moving text
           //console.log(salomesLists.items.map(a => a.description.artist));
           //userPlaylistsPlaceholder.innerHTML = userPlaylistsCarousel(salomesLists);
           $('#login').hide();
-                //$('#playlists').show();
-                //$("#buttonrow").attr('class', 'row');
-                //$("#volumerow").attr('class', 'row');
-                //document.getElementById('bottom').scrollIntoView();
           createPlaylisttable();            
         }
-        
-        $("#closeWindow").on('click touchend', function(){
-          console.log("stopping player");
-          gotoStart();
-        });
-      
-        $(document).ready(function(){
+
+////////////////////////////////
+// Event Handlers & General
+////////////////////////////////
+
+        $(document).ready(function(){   
+          getLocalPlaylists();
+          updateSlider("#volumeRange");
           updateHandlers();
           startTimer() 
         });
+
+        $("#closeWindow").on('click touchend', function(){
+          console.log("stopping player");
+          gotoStart();
+        });       
 
         function updateHandlers(){
           $("#artisttable img").off().on('mouseup',function(){
@@ -983,241 +1071,170 @@ Script for moving text
             getArtistAlbums(artistindex, 0);
           });
 
-        $("#playlisttable img").off().on('mouseup',function(){
-          let playlistindex =  parseFloat($(this).attr('id').split("Playlist_")[1]);
-          $("#playerimg").attr("src", salomesLists.items[playlistindex].imageUri);
-          displayObject.img = salomesLists.items[playlistindex].imageUri;
-          displayObject.URI = salomesLists.items[playlistindex].uri;
-          displayObject.index = playlistindex;
-          displayObject.name = salomesLists.items[playlistindex].name;
-          displayObject.context = "playlist";
-          displayObject.track_number = 0;
-          setLocalTracklist(playlistindex);
-          displayObject.local = true;
-          displayObject.list = salomesLists.items[playlistindex].name;         
-          goToPlaylist();
-          $("#trackdiv").scrollTop(0);
-          animatePlay();
-        });
+          $("#playlisttable img").off().on('mouseup',function(){
+            let playlistindex =  parseFloat($(this).attr('id').split("Playlist_")[1]);
+            $("#playerimg").attr("src", salomesLists.items[playlistindex].imageUri);
+            displayObject.img = salomesLists.items[playlistindex].imageUri;
+            displayObject.URI = salomesLists.items[playlistindex].uri;
+            displayObject.index = playlistindex;
+            displayObject.name = salomesLists.items[playlistindex].name;
+            displayObject.context = "playlist";
+            displayObject.track_number = 0;
+            setLocalTracklist(playlistindex);
+            displayObject.local = true;
+            displayObject.list = salomesLists.items[playlistindex].name;         
+            goToPlaylist();
+            $("#trackdiv").scrollTop(0);
+            animatePlay();
+          });
 
-        $("#albumtable img").off().on('mouseup',function(){
-          let albumindex =  parseFloat($(this).attr('id').split("Album_")[1]);
-          $("#playerimg").attr("src", currentAlbums[albumindex].images[0].url);
-          displayObject.img = currentAlbums[albumindex].images[0].url
-          displayObject.URI = currentAlbums[albumindex].uri;
-          displayObject.name = currentAlbums[albumindex].name;
-          displayObject.context = "album";
-          displayObject.list = currentAlbums[albumindex].id;
-          displayObject.track_number = 0;
-          displayObject.local = false;
-          let context = "albums"
-          if (currentAlbums[albumindex].type == "episode"){
-            context = "episodes"
-            displayObject.context = "episodes";
-          }
-          getContextTracks(context, currentAlbums[albumindex].id, 0)
-          goToPlaylist();
-          $("#trackdiv").scrollTop(0);
-          animatePlay();     
-        });
-
-        $('#trackdiv p').off().on('click', function(){
-          console.log("clicked track")
-          if(!$(this).hasClass("pressed-btn")){
-            let newNumber = $(this).index();
-            if (displayObject.name == activeObject.name){
-              console.log("local jump");
-              let oldNumber = localPlayer.currentTrack;
-              let jump = newNumber - oldNumber +1;
-              localJump(jump);
-            } else {
-              console.log(activeObject.name, displayObject.name);
-              updateStatus("localPlayback");
-              localJump(newNumber);
+          $("#albumtable img").off().on('mouseup',function(){
+            let albumindex =  parseFloat($(this).attr('id').split("Album_")[1]);
+            $("#playerimg").attr("src", currentAlbums[albumindex].images[0].url);
+            displayObject.img = currentAlbums[albumindex].images[0].url
+            displayObject.URI = currentAlbums[albumindex].uri;
+            displayObject.name = currentAlbums[albumindex].name;
+            displayObject.context = "album";
+            displayObject.list = currentAlbums[albumindex].id;
+            displayObject.track_number = 0;
+            displayObject.local = false;
+            let context = "albums"
+            if (currentAlbums[albumindex].type == "episode"){
+              context = "episodes"
+              displayObject.context = "episodes";
             }
-          }
-        });
-      }
+            getContextTracks(context, currentAlbums[albumindex].id, 0)
+            goToPlaylist();
+            $("#trackdiv").scrollTop(0);
+            animatePlay();     
+          });
 
-      function pleaseWait (time){
-        setTimeout(function(){console.log("waiting");},time);
-      }
-
-      $("#tableIcon").off().on("click", function(){
-        pleaseWait(100);
-          if($(this).hasClass("fa-caret-square-right")){
-            //console.log(displayObject.name);
-            Object.assign(displayObject, activeObject);
-            $("#playerimg").attr("src", displayObject.img);
-            if (displayObject.context == "playlist"){
-              if (displayObject.local){
-                setLocalTracklist(displayObject.index);
+          $('#trackdiv p').off().on('click', function(){
+            console.log("clicked track")
+            if(!$(this).hasClass("pressed-btn")){
+              let newNumber = $(this).index();
+              if (displayObject.name == activeObject.name){
+                console.log("local jump");
+                let oldNumber = localPlayer.currentTrack;
+                let jump = newNumber - oldNumber +1;
+                localJump(jump);
               } else {
-                getContextTracks("playlists", displayObject.list, 0);
+                console.log(activeObject.name, displayObject.name);
+                updateStatus("localPlayback");
+                localJump(newNumber);
               }
-            } else {
-              getContextTracks("albums", displayObject.list, 0);
             }
+          });
+        }
 
+        $('#volumeRange').on("input", function(){
+          var volume = updateSlider('#volumeRange').toString();
+          setVolume(volume)
+        });
+
+        $('#progressRange').on("input", function(){
+          console.log("progress changed");
+          //clearInterval(progressTimer);
+          //progressChange = true;
+          let duration;
+          if (localPlayer.customDuration && localPlayer.customDuration > 0){
+            duration = localPlayer.customDuration;
+            console.log("using custom duration", duration);
+          } else{
+            duration = localPlayer.duration;
           }
-          initProgress();
-          colorTrack();
-        });        
+          let progress = $('#progressRange').val().toString();
+          localPlayer.currentTime = progress/1000*duration;
+          console.log("read progress change", progress, "set time to", localPlayer.currentTime);
+        });      
 
-      function localJump (jump){
-        let mode;
-              if (Math.sign(jump) < 0){
-                mode = "backward";               
+        function pleaseWait (time){
+          setTimeout(function(){console.log("waiting");},time);
+        }
+
+        $("#tableIcon").off().on("click", function(){
+          pleaseWait(100);
+            if($(this).hasClass("fa-caret-square-right")){
+              //console.log(displayObject.name);
+              Object.assign(displayObject, activeObject);
+              $("#playerimg").attr("src", displayObject.img);
+              if (displayObject.context == "playlist"){
+                if (displayObject.local){
+                  setLocalTracklist(displayObject.index);
+                } else {
+                  getContextTracks("playlists", displayObject.list, 0);
+                }
               } else {
-                mode = "forward";
+                getContextTracks("albums", displayObject.list, 0);
               }
-              for (i=0; i<Math.abs(jump); i++){
-              skipLocalTrack(mode);
+
+            }
+            initProgress();
+            colorTrack();
+          });         
+      
+          function resizePlayer(){
+            let rectWidth = ($("#playerborder").innerWidth()-105) + "px";
+            let volumeOffset = ($("#playerborder").innerWidth()-75) + "px";
+            let otherOffset = "left:" + ($("#playerborder").innerWidth()-90) + "px;";
+            $("#playerrect").attr("width", rectWidth);
+            $("#volumeborder rect").attr("x", volumeOffset);
+            $("#volumeBtn i").attr("style", otherOffset);
+            $("#volumeborder rect").attr("width", 70);
+            initProgress();
+            // fit volume slider
+            let volumeWidth = "width:" + ($("#playerborder").innerWidth()-235) + "px";
+            let volumeStyle =  $("#volumeRange").attr("style").split("width:")[0];
+            $("#volumeRange").attr("style", volumeStyle+volumeWidth);
+            let tracksWidth = "width:" + ($("#playerborder").innerWidth()-160) + "px";
+            $("#tracklist").attr("style", tracksWidth);
+          }
+      
+          $(window).resize(function(){
+            resizePlayer();
+          });
+
+          $('#playbackBtn').off('mousedown touchstart').on('mousedown touchstart', function(){
+              $('#playbackBtn').addClass('pressed-btn');
+              console.log("mousedown play");
+            });
+
+          $('#playbackBtn').off('mouseup').on('mouseup', function(){
+            if ($('#trackdiv p').hasClass("pressed-btn")){
+              $(this).removeClass("pressed-btn");
+              animatePlay();
+            }  
+            $('#playbackBtn').removeClass('pressed-btn');
+            updateStatus("localPlayback");
+          });
+
+          $('#volumeBtn').off().on('click', function(){
+            let state = "inactive"
+            var classList = $('#volumeBtn').attr('class').split(/\s+/);
+            $.each(classList, function(index, item) {
+              if (item === 'pressed-btn') {
+                state = "active";
               }
-      }      
-      
-      function resizePlayer(){
-        let rectWidth = ($("#playerborder").innerWidth()-105) + "px";
-        let volumeOffset = ($("#playerborder").innerWidth()-75) + "px";
-        let otherOffset = "left:" + ($("#playerborder").innerWidth()-90) + "px;";
-        $("#playerrect").attr("width", rectWidth);
-        $("#volumeborder rect").attr("x", volumeOffset);
-        $("#volumeBtn i").attr("style", otherOffset);
-        $("#volumeborder rect").attr("width", 70);
-        initProgress();
-        // fit volume slider
-        let volumeWidth = "width:" + ($("#playerborder").innerWidth()-235) + "px";
-        let volumeStyle =  $("#volumeRange").attr("style").split("width:")[0];
-        $("#volumeRange").attr("style", volumeStyle+volumeWidth);
-        let tracksWidth = "width:" + ($("#playerborder").innerWidth()-160) + "px";
-        $("#tracklist").attr("style", tracksWidth);
-      }
+            });
+            if (state == "active"){
+              $('#volumeBtn').removeClass('pressed-btn');
+              animatePlay();
+            } else {
+              $('#volumeBtn').addClass('pressed-btn');
+              animateVolume();
+            }        
+          });
+            
+          $('#skippreviousBtn').on('click', function(){
+            //currentIndex = $('div.active').index();
+            skipLocalTrack("backward");                           
+          })
 
-      function animatePlay(){
-        // put volume to its spot
-        $("#volumeslider").addClass('d-none');
-        $('#volumeBtn').removeClass('pressed-btn');
-        let volumeOffset = ($("#playerborder").innerWidth()-75) + "px";
-        let otherOffset = "left:" + ($("#playerborder").innerWidth()-90) + "px;";
-        $("#volumeborder rect").attr("x", volumeOffset);
-        $("#volumeBtn i").attr("style", otherOffset);
-        $("#volumeborder rect").attr("width", 70);
-        // animate play border
-        let end = ($("#playerborder").innerWidth()-100);
-        let elem = $("#playerrect");
-        let id = setInterval(frame, 1);
-        let current = 70;
-        function frame(){
-          if ($("#playerrect").attr("width") >= end){
-            $("#playerrect").attr("width", end) 
-            $("#tracklist").removeClass("d-none");
-            clearInterval(id);            
-          } else { 
-            current+=5;         
-          $("#playerrect").attr("width", current)  
-          }
-        }
-        initProgress();
-        // size of track list
-        let tracksWidth = "width:" + ($("#playerborder").innerWidth()-160) + "px";
-        $("#tracklist").attr("style", tracksWidth);
-      }
-      
-      function initProgress(){
-        clearInterval(progressTimer);
-        let playerImagex = "left:" + (($("#player-image-container").innerWidth() - $("#playerimg").width())/2) + "px;";
-        let playerImagey = "top:" + ($("#playerimg").height() - 10) + "px;";
-        let playerImageWidth = "width:" + ($("#playerimg").width()) + "px;";
-        $("#player-image-container svg").attr("style", playerImagex+playerImagey);
-        $("#playerprogress").width(0);
-        $("#progressRange").attr("style", playerImagex+playerImagey+playerImageWidth);
-        //if(playerState.is_playing || localPlayer.is_playing){
-        if(localPlayer.is_playing){
-          progressState ();
-        }
-      }
-
-      function animateVolume(){
-        // put volume to its spot
-        let volumeOffset = ($("#playerborder").innerWidth()-75) + "px";
-        let otherOffset = "left:" + ($("#playerborder").innerWidth()-90) + "px;";
-        $("#volumeborder rect").attr("x", volumeOffset);
-        $("#volumeBtn i").attr("style", otherOffset);
-        // put away playerrect
-        $("#tracklist").addClass("d-none");
-        $("#playerrect").attr("width", 70);
-        // animate play border
-        let end = ($("#playerborder").innerWidth()-100);
-        let elem = $("#volumeborder");
-        let id = setInterval(frame, 1);
-        let currentWidth = 70;
-        let currentOffset = $("#playerborder").innerWidth()-75;
-        function frame(){
-          if ($("#volumeborder rect").attr("width") >= end){
-            $("#volumeborder rect").attr("width", end);
-            $("#volumeborder rect").attr("x", 95);
-            $("#volumeslider").removeClass('d-none');            
-            clearInterval(id);            
-          } else { 
-            currentWidth+=5;
-            currentOffset-=5;        
-          $("#volumeborder rect").attr("width", currentWidth);
-          $("#volumeborder rect").attr("x", currentOffset);
-          }
-        }         
-        // fit volume slider
-        let volumeWidth = "width:" + ($("#playerborder").innerWidth()-235) + "px";
-        let volumeStyle =  $("#volumeRange").attr("style").split("width:")[0];
-        $("#volumeRange").attr("style", volumeStyle+volumeWidth);
-      }
-      
-      $(window).resize(function(){
-        resizePlayer();
-      });
-
-      $('#playbackBtn').off('mousedown touchstart').on('mousedown touchstart', function(){
-          $('#playbackBtn').addClass('pressed-btn');
-          console.log("mousedown play");
-        });
-
-      $('#playbackBtn').off('mouseup').on('mouseup', function(){
-        if ($('#trackdiv p').hasClass("pressed-btn")){
-          $(this).removeClass("pressed-btn");
-          animatePlay();
-        }  
-        $('#playbackBtn').removeClass('pressed-btn');
-        updateStatus("localPlayback");
-      });
-
-      $('#volumeBtn').off().on('click', function(){
-        let state = "inactive"
-        var classList = $('#volumeBtn').attr('class').split(/\s+/);
-        $.each(classList, function(index, item) {
-          if (item === 'pressed-btn') {
-            state = "active";
-          }
-        });
-        if (state == "active"){
-          $('#volumeBtn').removeClass('pressed-btn');
-          animatePlay();
-        } else {
-          $('#volumeBtn').addClass('pressed-btn');
-          animateVolume();
-        }        
-      });
-        
-      $('#skippreviousBtn').on('click', function(){
-        //currentIndex = $('div.active').index();
-        skipLocalTrack("backward");                           
-      })
-
-      $('#skipnextBtn').on('click', function(){
-          //currentIndex = $('div.active').index();
-          skipLocalTrack("forward");           
-      })         
+          $('#skipnextBtn').on('click', function(){
+              //currentIndex = $('div.active').index();
+              skipLocalTrack("forward");           
+          })         
       })();
     </script>
   </body>
 </html>
-
-
