@@ -581,7 +581,7 @@ Script for moving text
     <script>
       (function() {
         
-        var currentTrack,
+        var currentTrack = 0,
             timer,
             progressTimer,
             lastActivity = 0,
@@ -627,6 +627,8 @@ Script for moving text
 //////////////////////////////////
 
         var localPlayer = document.createElement("AUDIO");
+            localPlayer.album = {};
+            localPlayer.currentTrack = 0;
             localPlayer.onended = function(){
               skipLocalTrack("forward");
             };
@@ -643,36 +645,29 @@ Script for moving text
 /////////////////////////////////
 
         function updateStatus(caller) {     
-          
+          //console.log(localPlayer.currentTrack);
           if (caller == "localPlayback"){
 
-            if (!(activeObject.name == displayObject.name)){
-              //console.log(localPlayer.album);            
+            if (!(activeObject.name == displayObject.name)){                          
               localPlayer.pause();
-              localPlayer.currentTime = 0;
-              localPlayer.album = salomesLists.items[displayObject.index];                          
-              //localPlayer.src = localPlayer.album.tracksPath + localPlayer.album.tracks[0]; // on local machine
-              localPlayer.src = localPlayer.album.tracks.url[0]; // on google
+              localPlayer.album = salomesLists.items[displayObject.index]; 
               localPlayer.currentTrack = 1;
-              console.log(localPlayer);
-              if (localPlayer.album.description.duration && localPlayer.album.description.duration.length > 0){
-                localPlayer.customDuration = localPlayer.album.tracks.duration[0];
-                cosnol.log("set custom duration ", localPlayer.customDuration);
-              } else {
-                localPlayer.customDuration = 0;
-              }
-              console.log("playing " + localPlayer.src);
               localPlayer.currentTime = 0;
-              Object.assign(activeObject, displayObject);
+              localPlayer.src = localPlayer.album.tracks.url[0]; // on google                         
+              Object.assign(activeObject, displayObject);        
+              //console.log(localPlayer.album);
+              console.log(localPlayer.currentTrack);
+              console.log("playing " + localPlayer.src);              
             }            
             if (localPlayer.paused){
               $('#playbackBtn').attr('class', 'far fa-pause-circle fa-5x layer3');
-              console.log("start local playback");
+              checkStorage();
               localPlayer.play();
-              Object.assign(activeObject, displayObject);
               localPlayer.is_playing = true;
+              Object.assign(activeObject, displayObject);               
               colorTrack();
               initProgress();
+              console.log("start local playback");
             } else {
               $('#playbackBtn').attr('class', 'far fa-play-circle fa-5x layer3');
               localPlayer.pause();
@@ -682,7 +677,7 @@ Script for moving text
             }   
           }
           if (!(activeObject.name == displayObject.name)){
-            console.log("different object");
+            //console.log("different object");
             $(progressSlider).addClass("d-none");
             $('#playbackBtn').attr('class', 'far fa-play-circle fa-5x layer3');
             countUpdates = 0;
@@ -695,6 +690,7 @@ Script for moving text
           if (localPlayer.is_playing && displayObject.name == activeObject.name) {
             $(progressSlider).removeClass("d-none");
             $('#playbackBtn').attr('class', 'far fa-pause-circle fa-5x layer3');
+            savePlaybackState();
             if (countUpdates++ > 25){
               countUpdates = 0;
               scrollToTrack(localPlayer.currentTrack);
@@ -728,13 +724,9 @@ Script for moving text
           if (activeObject.name == displayObject.name){
             let duration;
             let progress = localPlayer.currentTime;
-            if (localPlayer.customDuration && localPlayer.customDuration > 0){
-              duration = localPlayer.customDuration;
-            } else{
-              duration = localPlayer.duration;
-            }
+            duration = localPlayer.duration;
             $("#progressRange").val(progress/duration*1000);
-            console.log("progress", progress);
+            //console.log("progress", progress);
           }
         }
 
@@ -774,13 +766,7 @@ Script for moving text
               localPlayer.currentTime = 0;
               //localPlayer.src = localPlayer.album.tracksPath + localPlayer.album.tracks[localPlayer.currentTrack-1]; //on local machine
               localPlayer.src = localPlayer.album.tracks.url[localPlayer.currentTrack-1];// on google
-              console.log(localPlayer.album);
-              if (localPlayer.album.description.tracks && localPlayer.album.description.tracks.duration && localPlayer.album.description.tracks.duration.length > 0){
-                localPlayer.customDuration = Math.round(localPlayer.album.description.tracks.duration[localPlayer.currentTrack-1]);
-                console.log("set custom duration ", localPlayer.customDuration);
-              } else {
-                localPlayer.customDuration = 0;
-              }
+              //console.log(localPlayer.album);
               localPlayer.currentTime = 0;
               localPlayer.play();
             }
@@ -803,7 +789,67 @@ Script for moving text
               for (i=0; i<Math.abs(jump); i++){
               skipLocalTrack(mode);
               }
-      }     
+      }
+
+//////////////////////////////////
+// Save and Restore Playback State
+//////////////////////////////////
+
+        function checkStorage() {
+          let saved = localStorage.getItem("playbackState");
+          try {
+            saved = JSON.parse(saved);
+            console.log("avalable PlaybackState: ",saved);
+          } catch {
+            console.log("loading PLaybaackState failed");
+            saved = [];
+          }
+
+          if (!Array.isArray(saved)) saved = [saved]; // <-- ensure array
+
+          const match = saved.find(entry => entry.albumName === localPlayer.album.name);
+          if (!match) {
+            console.log("No saved state for this album");
+            return;
+          }
+
+          localPlayer.currentTrack = match.currentTrack;
+          localPlayer.src = localPlayer.album.tracks.url[localPlayer.currentTrack - 1];
+          localPlayer.currentTime = match.position;
+          scrollToTrack(localPlayer.currentTrack);
+          console.log("Restoring playback:", match);
+        }
+
+        function savePlaybackState() {
+          let saved = localStorage.getItem("playbackState");
+          try {
+            saved = JSON.parse(saved);
+          } catch {
+            saved = [];
+          }  
+
+          if (!Array.isArray(saved)) saved = [saved]; // <-- ensure array
+
+          const current = {
+            trackName: localPlayer.album.tracks.names[localPlayer.currentTrack - 1],
+            albumName: localPlayer.album.name,
+            currentTrack: localPlayer.currentTrack,    
+            position: localPlayer.currentTime-3,
+            timestamp: Date.now()
+          };
+
+          // Remove previous entry for this album
+          saved = saved.filter(entry => entry.albumName !== current.albumName);
+
+          // Add new one to top
+          saved.unshift(current);
+
+          // Keep max 3 albums
+          if (saved.length > 3) saved = saved.slice(0, 3);
+
+          localStorage.setItem("playbackState", JSON.stringify(saved));
+          //console.log("Saved playback states:", saved);
+        }
 
 
 //////////////////////////////////
@@ -875,7 +921,7 @@ Script for moving text
       }
 
       function scrollToTrack (number){
-        //console.log("scroll to track", number);
+        console.log("scroll to track", number);
         if (activeObject.name == displayObject.name){
           let trackDisplay = document.querySelector("#track" + (number-1));
           trackDisplay.scrollIntoView({ left: 0, block: 'start', behavior: 'smooth' });
@@ -1136,13 +1182,7 @@ Script for moving text
           console.log("progress changed");
           //clearInterval(progressTimer);
           //progressChange = true;
-          let duration;
-          if (localPlayer.customDuration && localPlayer.customDuration > 0){
-            duration = localPlayer.customDuration;
-            console.log("using custom duration", duration);
-          } else{
-            duration = localPlayer.duration;
-          }
+          let duration = localPlayer.duration;
           let progress = $('#progressRange').val().toString();
           localPlayer.currentTime = progress/1000*duration;
           console.log("read progress change", progress, "set time to", localPlayer.currentTime);
