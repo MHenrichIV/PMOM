@@ -817,7 +817,6 @@ Script for moving text
             console.log("No saved state for this album");
             return;
           }
-
           localPlayer.currentTrack = match.currentTrack;
           localPlayer.src = localPlayer.album.tracks.url[localPlayer.currentTrack - 1];
           localPlayer.currentTime = match.position;
@@ -844,8 +843,9 @@ Script for moving text
           };
 
           // Remove previous entry for this album
-          saved = saved.filter(entry => entry.albumName !== current.albumName);
-
+          if (saved != null && saved.length > 0){
+            saved = saved.filter(entry => entry.albumName !== current.albumName);
+          }
           // Add new one to top
           saved.unshift(current);
 
