@@ -797,12 +797,17 @@ Script for moving text
 
         function checkStorage() {
           let saved = localStorage.getItem("playbackState");
-          try {
-            saved = JSON.parse(saved);
-            console.log("avalable PlaybackState: ",saved);
-          } catch {
-            console.log("loading PLaybaackState failed");
+          if (!saved) {
+            console.log("No saved playback state found yet.");
             saved = [];
+          } else {
+            try {
+              saved = JSON.parse(saved);
+              console.log("Available PlaybackState:", saved);
+            } catch {
+              console.log("Failed to parse PlaybackState, resetting.");
+              saved = [];
+            }
           }
 
           if (!Array.isArray(saved)) saved = [saved]; // <-- ensure array
