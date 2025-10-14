@@ -832,7 +832,15 @@ Script for moving text
             saved = [];
           }  
 
-          if (!Array.isArray(saved)) saved = [saved]; // <-- ensure array
+            // Ensure it's always a clean array with no nulls
+          if (!Array.isArray(saved)) saved = [saved];
+          saved = saved.filter(entry => entry && entry.albumName); // remove null/bad entries
+
+          // Make sure the current album info exists
+          if (!localPlayer.album || !localPlayer.album.name) {
+            console.warn("No album info available yet — skipping save.");
+            return;
+          }
 
           const current = {
             trackName: localPlayer.album.tracks.names[localPlayer.currentTrack - 1],
